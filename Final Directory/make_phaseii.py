@@ -2,7 +2,7 @@ import numpy as np
 import sys
 from astropy import units as u
 from astropy.coordinates import Angle
-def make_phaseii(lstfile):
+def make_phaseii(savedir, lstfile):
     common = {
                 'PROGRAM':'HET19-3-400',
                 'VIFU':'047',
@@ -21,7 +21,7 @@ def make_phaseii(lstfile):
                 'COMMENT':'"Usual Dither, look for new object in target IFU"',
                 }
     GraceID = lstfile.split('_')[1].split('.')[0]
-    with open(GraceID+'.tsl','w') as f:
+    with open(savedir+'submission_to_HET.tsl','w') as f:
         f.write('COMMON\n')
         for key,value in common.items():
             f.write('\t{}\t{}\n'.format(key,value))

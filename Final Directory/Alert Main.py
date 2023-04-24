@@ -205,7 +205,7 @@ def process_fits(recipients, fits_file, alert_message = None):
             calling_dict = get_caller_list(contact_list_file_loc)
             texting_dict = get_texter_list(contact_list_file_loc)
             
-            make_phaseii.make_phaseii(obs_time_dir+'LSTs_{}.out'.format(alert_message['superevent_id']))
+            make_phaseii.make_phaseii(lstfile = obs_time_dir+'LSTs_{}.out'.format(alert_message['superevent_id']), savedir = obs_time_dir)
             
             call_people(calling_dict = calling_dict, people_to_contact = ['Karthik'], message_to_say = 'NS Event Detected. Check email for information.')
             send_text_messages(reciever_dict = texting_dict, people_to_contact = ['Karthik'], message_to_send = 'NS Event Detected. Check email for information.')
