@@ -111,25 +111,23 @@ def write_catalog(params,catalog = 'GLADE', savedir=''):
         # Reading in the skymap prob and header
         locinfo, header = hp.read_map(fits, field=range(4), h=True)
         probb, distmu, distsigma, distnorm = locinfo
-        
-        
-        
-        print("probb: "+str(probb))
-        print("distmu: "+str(distmu))
-        print("distnorm: "+str(distnorm))
-
         # Getting healpix resolution and pixel area in deg^2
         npix = len(probb)
-        print("npix: "+str(npix))
         nside = hp.npix2nside(npix)
-        print("nside: "+str(nside))
         # Area per pixel in steradians
         pixarea = hp.nside2pixarea(nside)
         # Get the catalog
         
         
         #working with list of galaxies visble to HET
-        cat1 = pd.read_csv("Glade_HET_Visible_Galaxies.csv", sep=',',usecols = [0, 1,2,3,4],names=['RAJ2000','DEJ2000','B','K','d'],header=0,dtype=np.float64)
+        cat1 = pd.read_csv("Glade_HET_Visible_Galaxies.csv", sep=',',usecols = [1,2,3,4,5],names=['RAJ2000','DEJ2000','B','K','d'],header=0,dtype=np.float64)
+        print("cat1: "+str(cat1))
+        print("cat1 RA: "+str(cat1['RAJ2000']))
+        print("cat1 dec: "+str(cat1['DEJ2000']))
+        
+        print("max cat1 ra: "+str(max(cat1['RAJ2000'])))
+        print("min cat1 ra: "+str(min(cat1['RAJ2000'])))
+        #plt.show()
         
         cattop, logptop, cls = get_probability_index(cat1, probb, distmu, distsigma, distnorm, pixarea, nside, probability)
         
@@ -137,6 +135,11 @@ def write_catalog(params,catalog = 'GLADE', savedir=''):
         #calculate the total volume visible to HET, compare to the total volume in the skymap region
         
         
+        
+        print("Cattop RA: "+str(cattop['RAJ2000']))
+        print("Cattop dec: "+str(cattop['DEJ2000']))
+
+
 
         index = Column(name='index',data=np.arange(len(cattop)))
         logprob = Column(name='LogProb',data=logptop)
@@ -144,7 +147,7 @@ def write_catalog(params,catalog = 'GLADE', savedir=''):
         contour = Column(name='contour',data = cls)
         Nvis = Column(name='Nvis',data=np.ones(len(cattop)))
         cattop.add_columns([index,logprob,exptime,Nvis,contour])
-        ascii.write(cattop['index','RAJ2000','DEJ2000','exptime','Nvis','LogProb','contour'], savedir+'galaxiesGLADE_%s.dat'%event, overwrite=True)
+        ascii.write(cattop['index','RAJ2000','DEJ2000','exptime','Nvis','LogProb','contour'], savedir+'galaxiesMANGROVE_%s.dat'%event, overwrite=True)
         
         
         #should find the number of galaxies that will be visible to HET, compared to the number of total galaxies within the region

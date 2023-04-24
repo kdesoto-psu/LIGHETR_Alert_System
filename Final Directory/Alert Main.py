@@ -185,7 +185,6 @@ def process_fits(recipients, fits_file, alert_message = None):
             write_to_file(obs_time_dir+" observability.txt", '{:.1f} hours till you can observe the 90 % prob region.'.format(timetill90), append = True)
             
             cattop, logptop, num_galaxies_visible_HET = get_galaxies.write_catalog(alert_message, 'GLADE', savedir = obs_time_dir)
-            print("cattop: "+str(cattop))
             mincontour = get_LST.get_LST(savedir = obs_time_dir,targf = obs_time_dir+'galaxies%s_%s.dat'%('GLADE',alert_message['superevent_id']))
             
             
