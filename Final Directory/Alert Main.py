@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 from astropy.time import Time
-import numpy as np
 #import diagnose
 #from diagnose import *
 import json
@@ -11,10 +10,6 @@ from hop.io import StartPosition
 import healpy as hp
 from astropy.io import fits
 import requests
-import sys
-sys.path.insert(0, '/Users/sky5265/Documents/GitHub/Astro_Code')
-from Astro_useful_funcs import *
-from Analysis_useful_funcs import *
 from prob_obs import *
 from get_galaxies import *
 import get_galaxies
@@ -24,9 +19,33 @@ from twilio_texter_example import *
 from testing_emailer import *
 import time as TIme
 import make_phaseii
-from read_galaxy_list import *
 
 recent_April = Time('2023-02-16T00:00:00.00')
+
+def write_to_file(file_loc, data_out, separator = ' ', headers=None, append=False):
+    '''inputs: file_loc-location to which to write to, data_to_write-this is a 2d array that will be written to a file
+       outputs: none
+       This function writes a 2d array to a file'''
+       
+    if not append:
+        out = open(file_loc ,'w')
+    else:
+        out = open(file_loc ,'a+')
+    
+    if type(data_out) is str:
+        out.write(data_out+"\n")
+        
+    else:
+        for i  in range(len(data_out)):
+            if isinstance(data_out[i], float) or type(data_out[i]) is str:
+                out.write(str(data_out[i])+separator)
+            else:
+                for j in range(len(data_out[i])):
+                    out.write(str(data_out[i][j])+separator)
+                
+            out.write("\n")
+    out.close()
+
 
 def get_email_list(file_loc = 'contact_all_BNS.json'):
     f = open( file_loc , "rb" )
@@ -55,7 +74,9 @@ def process_fits(fits_file, alert_message = None):
         
         #so we've found a time that we want to look at. I'll make a directory for this time.
         obs_time_dir = str(alert_time.mjd)+"/"
-        mkdir(obs_time_dir)
+        
+        if not os.path.exists(obs_time_dir):
+            os.mkdir(obs_time_dir)
         superevent_id = alert_message['superevent_id']
         fits_url = 'https://gracedb.ligo.org/api/superevents/'+str(superevent_id)+'/files/bayestar.multiorder.fits'
         
@@ -171,10 +192,12 @@ def process_fits(fits_file, alert_message = None):
             
             
             
-            
+            print("people to contact: "+str(people_to_contact))
             
             email_body = 'A Neutron Star Merger has been detected by LIGO.\n{:.1f} hours till you can observe the 90 % prob region.'.format(timetill90)+"\nSource has a {:.1f}% chance of being observable now.".format(int(round(100 * prob)))
             #email_body = 'Hi'
+
+            
             
             email(contact_list_file_loc = contact_list_file_loc, subject='LIGHETR Alert: NS Merger Detected', body = email_body, files_to_attach = [], people_to_contact = people_to_contact)
             
@@ -182,7 +205,7 @@ def process_fits(fits_file, alert_message = None):
             calling_dict = get_caller_list(contact_list_file_loc)
             texting_dict = get_texter_list(contact_list_file_loc)
             
-            make_phaseii.make_phaseii(lstfile = obs_time_dir+'LSTs_{}.out'.format(alert_message['superevent_id']), savedir = obs_time_dir)
+            make_phaseii.make_phaseii(lstfile = obs_time_dir+'LSTs_Visible.out', savedir = obs_time_dir)
             
             call_people(calling_dict = calling_dict, people_to_contact = people_to_contact, message_to_say = 'NS Event Detected. Check email for information.')
             send_text_messages(reciever_dict = texting_dict, people_to_contact = people_to_contact, message_to_send = 'NS Event Detected. Check email for information.')
