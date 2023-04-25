@@ -23,6 +23,7 @@ from twilio_texter_example import *
 from testing_emailer import *
 import time as TIme
 import make_phaseii
+from read_galaxy_list import *
 
 recent_April = Time('2023-02-16T00:00:00.00')
 
@@ -41,7 +42,7 @@ def get_texter_list(file_loc = 'contact_all_BNS.json'):
     jsonObject = json.load(f)
     return jsonObject['texter_list']
 
-def process_fits(recipients, fits_file, alert_message = None):
+def process_fits(fits_file, alert_message = None):
         
         alert_type = alert_message['alert_type']
         alert_time = alert_message['time_created']
@@ -54,20 +55,6 @@ def process_fits(recipients, fits_file, alert_message = None):
         #so we've found a time that we want to look at. I'll make a directory for this time.
         obs_time_dir = str(alert_time.mjd)+"/"
         mkdir(obs_time_dir)
-        #I want to store the multi and single order fits here, along with the alert message as well.
-        #write_to_file(obs_time_dir+"alert_message.txt", alert_message)
-        
-
-
-        #the fits file should be the multi
-        
-        
-        #os.system('ligo-skymap-plot-observability '+str(fits_file)+' --site HET -o observability.png')
-        #os.system('ligo-skymap-plot '+str(fits_file)+' -o '+str(alert_message['superevent_id'])+'.png')
-        
-        
-        
-        #skymap,header = hp.read_map(str(params['id'])+'.singleorder.fits', h=True, verbose=False)
         superevent_id = alert_message['superevent_id']
         fits_url = 'https://gracedb.ligo.org/api/superevents/'+str(superevent_id)+'/files/bayestar.multiorder.fits'
         
@@ -97,13 +84,7 @@ def process_fits(recipients, fits_file, alert_message = None):
         hp.mollview(m1, rot = (180, -10, 0))
         plt.savefig(obs_time_dir+'fits_plotted.png')
         plt.close()
-        
-        
-        
-        
-        #skymap,header = hp.read_map(str(fits_url), h=True, verbose=False)
-        #params['skymap_fits'] = fits_file
-        
+
 
         # Print and save some values from the FITS header.
         header = dict(header)
@@ -184,21 +165,17 @@ def process_fits(recipients, fits_file, alert_message = None):
             write_to_file(obs_time_dir+" observability.txt", "Integrated probability over 24 hours (ignoring the sun) is {:.1f}%".format(int(round(100 * probfull))), append = True)
             write_to_file(obs_time_dir+" observability.txt", '{:.1f} hours till you can observe the 90 % prob region.'.format(timetill90), append = True)
             
-            cattop, logptop, num_galaxies_visible_HET = get_galaxies.write_catalog(alert_message, 'GLADE', savedir = obs_time_dir)
-            mincontour = get_LST.get_LST(savedir = obs_time_dir,targf = obs_time_dir+'galaxies%s_%s.dat'%('GLADE',alert_message['superevent_id']))
+            cattop, logptop, num_galaxies_visible_HET = get_galaxies.write_catalog(alert_message, savedir = obs_time_dir)
+            mincontour = get_LST.get_LST(savedir = obs_time_dir,targf = obs_time_dir+'HET_Visible_Galaxies_prob_list.dat')
             
             
-            
-            contact_list_file_loc = 'contact_only_HET_BNS.json'
-            
-            #email(contact_list_file_loc = contact_list_file_loc, subject='LIGHETR Alert: NS Merger Detected', body = 'A Neutron Star Merger has been detected by LIGO.\n{:.1f} hours till you can observe the 90 % prob region.'.format(timetill90)+"\nSource has a {:.1f}% chance of being observable now.".format(int(round(100 * prob))), files_to_attach = [obs_time_dir+"HET_visibility_figure.png", obs_time_dir+"piechart.png"], people_to_contact = ['Karthik'])
             
             
             
             email_body = 'A Neutron Star Merger has been detected by LIGO.\n{:.1f} hours till you can observe the 90 % prob region.'.format(timetill90)+"\nSource has a {:.1f}% chance of being observable now.".format(int(round(100 * prob)))
             #email_body = 'Hi'
             
-            email(contact_list_file_loc = contact_list_file_loc, subject='LIGHETR Alert: NS Merger Detected', body = email_body, files_to_attach = [], people_to_contact = ['Karthik', 'Karthik_PSU'])
+            email(contact_list_file_loc = contact_list_file_loc, subject='LIGHETR Alert: NS Merger Detected', body = email_body, files_to_attach = [], people_to_contact = people_to_contact)
             
             
             calling_dict = get_caller_list(contact_list_file_loc)
@@ -206,15 +183,16 @@ def process_fits(recipients, fits_file, alert_message = None):
             
             make_phaseii.make_phaseii(lstfile = obs_time_dir+'LSTs_{}.out'.format(alert_message['superevent_id']), savedir = obs_time_dir)
             
-            call_people(calling_dict = calling_dict, people_to_contact = ['Karthik'], message_to_say = 'NS Event Detected. Check email for information.')
-            send_text_messages(reciever_dict = texting_dict, people_to_contact = ['Karthik'], message_to_send = 'NS Event Detected. Check email for information.')
+            call_people(calling_dict = calling_dict, people_to_contact = people_to_contact, message_to_say = 'NS Event Detected. Check email for information.')
+            send_text_messages(reciever_dict = texting_dict, people_to_contact = people_to_contact, message_to_send = 'NS Event Detected. Check email for information.')
             
             #send_notifications(params,timetill90)
             
             
             
 ###########Things start here####################
-
+contact_list_file_loc = 'contact_only_HET_BNS.json'
+people_to_contact = ['Karthik', 'Ashley', 'Kaylee']
 
 
 #stream_start_pos = 1600
@@ -259,7 +237,7 @@ with stream.open("kafka://kafka.scimma.org/igwn.gwalert", "r") as s:
         '''send that fits file into process_fits'''
         if skymap is not None and event is not None:
             print('Calling process_fits')
-            process_fits(recipients = 'recipients.py', fits_file = skymap, alert_message = message_content)
+            process_fits(fits_file = skymap, alert_message = message_content)
 
 
 

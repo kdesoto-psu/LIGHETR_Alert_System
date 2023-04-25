@@ -15,7 +15,7 @@ texter_dict = {'Zhenyuan':'+18147772603', 'Kaylee':'+17863973538', 'OG':'+167890
 def send_text_messages(reciever_dict, people_to_contact = [], message_to_send = 'LIGHETR Alert Message.\nStay Fresh', from_ = "+16073886023"):
     
     account_sid = 'ACc430265c246c76afe3f2c2bc52fd7c8a'
-    auth_token = "6a01135684c7da0946063d1d99f2a7f0"
+    auth_token = "0d7c1db869e51450b3d369fc6c376e49"
     client = Client(account_sid, auth_token)
     
     if len(people_to_contact) == 0:

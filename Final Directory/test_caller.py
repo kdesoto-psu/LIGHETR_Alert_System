@@ -22,7 +22,6 @@ def get_caller_list(file_loc = 'contact_all_BNS.json'):
 def test_calling(file_loc = 'contact_all_BNS.json', people_to_contact = []):
     
     calling_dict = get_caller_list(file_loc = file_loc)
-    print("calling dict: "+str(calling_dict))
     call_people(calling_dict = calling_dict, people_to_contact = people_to_contact, message_to_say = message_to_say)
 
 test_calling(people_to_contact = ['Karthik'])

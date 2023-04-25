@@ -2,9 +2,9 @@ import numpy as np
 import sys
 from astropy import units as u
 from astropy.coordinates import Angle
-def make_phaseii(savedir, lstfile):
+def make_phaseii(lstfile, savedir = ''):
     common = {
-                'PROGRAM':'HET19-3-400',
+                'PROGRAM':'HET23-2-400',
                 'VIFU':'047',
                 'EXP':'360',
                 'NUMEXP':'3',
