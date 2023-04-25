@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 from astropy.time import Time
+import numpy as np
 #import diagnose
 #from diagnose import *
 import json
