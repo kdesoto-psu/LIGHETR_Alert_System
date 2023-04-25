@@ -194,7 +194,7 @@ def process_fits(fits_file, alert_message = None):
             
             print("people to contact: "+str(people_to_contact))
             
-            email_body = 'A Neutron Star Merger has been detected by LIGO.\n{:.1f} hours till you can observe the 90 % prob region.'.format(timetill90)+"\nSource has a {:.1f}% chance of being observable now.".format(int(round(100 * prob)))
+            email_body = 'A Neutron Star Merger has been detected by LIGO.\n{:.1f} hours till you can observe the 90 % prob region.'.format(timetill90)+"\nSource has a {:.1f}% chance of being observable now.\n\nPlease join this zoom call: https://us06web.zoom.us/j/87536495694".format(int(round(100 * prob)))
             #email_body = 'Hi'
 
             
@@ -207,10 +207,8 @@ def process_fits(fits_file, alert_message = None):
             
             make_phaseii.make_phaseii(lstfile = obs_time_dir+'LSTs_Visible.out', savedir = obs_time_dir)
             
-            pdb.set_trace()
-            
             call_people(calling_dict = calling_dict, people_to_contact = people_to_contact, message_to_say = 'NS Event Detected. Check email for information.')
-            send_text_messages(reciever_dict = texting_dict, people_to_contact = people_to_contact, message_to_send = 'NS Event Detected. Check email for information.')
+            send_text_messages(reciever_dict = texting_dict, people_to_contact = people_to_contact, message_to_send = 'NS Event Detected. Check email for information.\n\nPlease join this zoom Call:\nhttps://us06web.zoom.us/j/87536495694')
             
             #send_notifications(params,timetill90)
             
@@ -224,9 +222,9 @@ people_to_contact = ['Karthik', 'Ashley', 'Kaylee']
 #stream_start_pos = 1600
 stream_start_pos = StartPosition.EARLIEST
 #print("Starting stream at "+str(stream_start_pos))
-#stream = Stream(start_at=stream_start_pos)
+stream = Stream(start_at=stream_start_pos)
 
-stream = Stream()
+#stream = Stream()
 
 num_messages = 0
 
