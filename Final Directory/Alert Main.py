@@ -224,9 +224,9 @@ people_to_contact = ['Karthik', 'Ashley', 'Kaylee']
 #stream_start_pos = 1600
 stream_start_pos = StartPosition.EARLIEST
 #print("Starting stream at "+str(stream_start_pos))
-stream = Stream(start_at=stream_start_pos)
+#stream = Stream(start_at=stream_start_pos)
 
-#stream = Stream()
+stream = Stream()
 
 num_messages = 0
 
