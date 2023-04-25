@@ -25,6 +25,7 @@ def email(contact_list_file_loc = 'contact_all_BNS.json', subject = None, body =
     for i in range(len(people_to_contact)-1):
         person = people_to_contact[i]
         address = email_list[person]
+        print("looking at address: "+str(address))
         if 'psu.edu' in address:
             
             print("adding email address: "+str(email_list[person]))

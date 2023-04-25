@@ -23,14 +23,17 @@ def build_message_to_say(voice = voice, message_to_say = message_to_say):
     else:
         xml = '<Response><Say voice = \"'+str(voice)+'\">'
     xml += message_to_say
-    xml += '</Say><Play>'
-    xml += 'http://demo.twilio.com/docs/classic.mp3</Play></Response>'
+    xml += '</Say>'
+    xml += '</Response>'
+    
+    print("going to say: "+str(xml))
+    
     return xml
 
 def call_people(people_to_contact = [], from_ = "+16073886023", message_to_say = message_to_say, calling_dict = calling_dict):
     
     account_sid = "ACc430265c246c76afe3f2c2bc52fd7c8a"
-    auth_token = "0d7c1db869e51450b3d369fc6c376e49"
+    auth_token = "eb0888a1ffc6f472a26723b2edd2da39"
 
 
     client = Client(account_sid, auth_token)
