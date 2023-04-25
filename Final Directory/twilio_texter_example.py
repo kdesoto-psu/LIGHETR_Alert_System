@@ -6,10 +6,6 @@ import pdb
 
 # Set environment variables for your credentials
 # Read more at http://twil.io/secure
-
-calling_dict = {'Zhenyuan':'+18147772603', 'Kaylee':'+17863973538', 'OG':'+16789006318', 'Laura':'+14403615990', 'Mary':'+17034241176'}
-texter_dict = {'Zhenyuan':'+18147772603', 'Kaylee':'+17863973538', 'OG':'+16789006318', 'Laura':'+14403615990', 'Mary':'+17034241176'}
-
     
 
 def send_text_messages(reciever_dict, people_to_contact = [], message_to_send = 'LIGHETR Alert Message.\nStay Fresh', from_ = "+16073886023"):

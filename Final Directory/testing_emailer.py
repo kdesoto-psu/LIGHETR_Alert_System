@@ -19,15 +19,30 @@ def email(contact_list_file_loc = 'contact_all_BNS.json', subject = None, body =
     if len(people_to_contact) == 0:
         people_to_contact = email_list.keys
     
-    for person in people_to_contact:
+    print("emails of people to contact: "+str(people_to_contact))
+    
+    
+    for i in range(len(people_to_contact)-1):
+        person = people_to_contact[i]
         address = email_list[person]
         if 'psu.edu' in address:
             
-            psu_email_receivers+=email_list[person]+", "
+            print("adding email address: "+str(email_list[person]))
+            psu_email_receivers+=str(email_list[person])+", "
         else:
-            non_psu_email_receivers+=email_list[person]+", "
+            non_psu_email_receivers+=str(email_list[person])+", "
+            
+    if psu_email_receivers[-2:] == ', ':
+        psu_email_receivers = psu_email_receivers[:-2]
+        
+    if non_psu_email_receivers[-2:] == ', ':
+        non_psu_email_receivers = non_psu_email_receivers[:-2]
+
+    print("psu email receivers: "+str(psu_email_receivers))
 
     all_email_recipients = [psu_email_receivers, non_psu_email_receivers]
+    
+    print('all email recipients: '+str(all_email_recipients))
         
     if subject is None:
         subject = "LIGO HET Followup Test Email"
