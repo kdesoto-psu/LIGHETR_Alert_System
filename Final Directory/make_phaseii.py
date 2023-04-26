@@ -6,18 +6,18 @@ def make_phaseii(lstfile, savedir = ''):
     common = {
                 'PROGRAM':'HET23-2-400',
                 'VIFU':'047',
-                'EXP':'360',
-                'NUMEXP':'3',
-                'EQUINOX':'2000.0',
+                'EXP':'1080',
+                'CRSPLIT':'3',
                 'INSTRUMENT':'VIRUS',
-                'MAG':'22',
-                'SKYBRIGHT':'18.0',
+                'GMAG':'22',
+                'SKYBRIGHT_G':'18.0',
                 'SEEING': '3.0',
                 'SKYTRANS': 'S',
                 'SKYCALS': 'Y',
                 'FLUX': 'Y',
                 'PRI':'0',
                 'SETUPMETHOD':'DirectGuider',
+                'DITHER':'Y',
                 'COMMENT':'"Usual Dither, look for new object in target IFU"',
                 }
     GraceID = lstfile.split('_')[1].split('.')[0]
@@ -32,7 +32,7 @@ def make_phaseii(lstfile, savedir = ''):
         dec = Angle(targets[:,2],u.degree).dms#.to_string(unit=u.degree,sep=':')
         ra = Angle(targets[:,1],u.degree).hms#.to_string(unit=u.hour,sep=':')
         dec = ["{:+03.0f}:{:02.0f}:{:05.2f}".format(dd[0],abs(float(dd[1])),abs(float(dd[2]))) for dd in zip(dec[0],dec[1],dec[2])]
-        ra = ["{:02.0f}:{:02.0f}:{:06.3f}".format(rr[0],rr[1],rr[2]) for rr in zip(ra[0],ra[1],ra[2])]
+        ra = ["{:02.0f}:{:02.0f}:{:06.2f}".format(rr[0],rr[1],rr[2]) for rr in zip(ra[0],ra[1],ra[2])]
         for i,target in enumerate(targets):
             if float(target[2])>0:
                 target[2]='+'+target[2]

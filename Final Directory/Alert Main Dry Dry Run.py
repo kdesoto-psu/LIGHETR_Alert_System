@@ -207,7 +207,7 @@ def process_fits(fits_file, alert_message = None):
             
             make_phaseii.make_phaseii(lstfile = obs_time_dir+'LSTs_Visible.out', savedir = obs_time_dir)
             
-            call_people(calling_dict = calling_dict, people_to_contact = people_to_contact, message_to_say = 'NS Event Detected. Check email for information.')
+            #call_people(calling_dict = calling_dict, people_to_contact = people_to_contact, message_to_say = 'NS Event Detected. Check email for information.')
             send_text_messages(reciever_dict = texting_dict, people_to_contact = people_to_contact, message_to_send = 'NS Event Detected. Check email for information.\n\nPlease join this zoom Call:\nhttps://us06web.zoom.us/j/87536495694')
             
             #send_notifications(params,timetill90)
@@ -216,7 +216,7 @@ def process_fits(fits_file, alert_message = None):
             
 ###########Things start here####################
 contact_list_file_loc = 'contact_only_HET_BNS.json'
-people_to_contact = ['Karthik', 'Ashley', 'Kaylee']
+people_to_contact = ['Karthik', 'Srisurya']
 
 
 #stream_start_pos = 1600
@@ -232,7 +232,7 @@ print("Listening for Alerts from kafka")
 
 with stream.open("kafka://kafka.scimma.org/igwn.gwalert", "r") as s:
     for message in s:
-        print("Got an alert")
+        
         event = message.content[0]['event']
         message_content = message.content[0]
         alert_type = message_content['alert_type']
@@ -242,11 +242,12 @@ with stream.open("kafka://kafka.scimma.org/igwn.gwalert", "r") as s:
         
         
         
-        
         if alert_time.jd < recent_April.jd:
             num_messages+=1
+            print("time too early")
             continue
         
+        print("Got an alert")
         
         if event is not None:
             print("Event Keys: "+str(event.keys()))
