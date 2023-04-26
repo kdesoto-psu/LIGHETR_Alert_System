@@ -1,5 +1,9 @@
 import matplotlib.pyplot as plt
 from astropy.time import Time
+from astropy.table import QTable
+from astropy import units as u
+import astropy_healpix as ah
+import numpy as np
 #import diagnose
 #from diagnose import *
 import json
@@ -86,27 +90,42 @@ def process_fits(fits_file, alert_message = None):
         multiorder_file_name = obs_time_dir+'multiorder_fits_'+str(superevent_id)+'.fits'
         req = requests.get(url)
         file = open(multiorder_file_name, 'wb')
+
+        print("Finished opening FITS")
         for chunk in req.iter_content(100000):
             file.write(chunk)
+
+        print("Finished writing FITS")
         file.close()
         
+        """
         #flatten the multi-order fits file into single-order
         singleorder_file_name = obs_time_dir+'flattened_multiorder_fits_'+superevent_id+'.fits'
         os.system('ligo-skymap-flatten '+str(multiorder_file_name)+' '+singleorder_file_name)
         
         #open the flattened fits file
+        print("Opening flattened fits")
         fits_file = fits.open(singleorder_file_name)
         
         #get the skymap and header of the flattened, single-order fits file
-        skymap,header = hp.read_map(singleorder_file_name, h=True, verbose=False)
+        print("Reading skymap1")
+        #skymap,header = hp.read_map(singleorder_file_name, h=True, verbose=False)
         
-        
+        print("Reading skymap2")
         #plot the sky-localization from the flattened, single-order fits file
         m1 = hp.read_map(singleorder_file_name)
         hp.mollview(m1, rot = (180, -10, 0))
         plt.savefig(obs_time_dir+'fits_plotted.png')
         plt.close()
 
+        """
+
+        # directly work with skymap from multiorder fits file
+        skymap = QTable.read(multiorder_file_name)
+        header = fits.open(multiorder_file_name)[1].header
+
+        # plot skymap localization
+        os.system("ligo-skymap-plot %s -o %s" % (multiorder_file_name, obs_time_dir+"fits_plotted.png"))
 
         # Print and save some values from the FITS header.
         header = dict(header)
@@ -170,7 +189,7 @@ def process_fits(fits_file, alert_message = None):
 
         prob, probfull, timetill90, m = prob_observable(skymap, header, time, savedir = obs_time_dir, plot=True)
 
-        alert_message['skymap_fits'] = singleorder_file_name
+        alert_message['skymap_fits'] = multiorder_file_name
         alert_message['skymap_array'] = m
         
         
@@ -187,7 +206,9 @@ def process_fits(fits_file, alert_message = None):
             write_to_file(obs_time_dir+" observability.txt", "Integrated probability over 24 hours (ignoring the sun) is {:.1f}%".format(int(round(100 * probfull))), append = True)
             write_to_file(obs_time_dir+" observability.txt", '{:.1f} hours till you can observe the 90 % prob region.'.format(timetill90), append = True)
             
+            print("get_galaxies writing catalog")
             cattop, logptop, num_galaxies_visible_HET = get_galaxies.write_catalog(alert_message, savedir = obs_time_dir)
+            print("finished writing cat")
             mincontour = get_LST.get_LST(savedir = obs_time_dir,targf = obs_time_dir+'HET_Visible_Galaxies_prob_list.dat')
             
             

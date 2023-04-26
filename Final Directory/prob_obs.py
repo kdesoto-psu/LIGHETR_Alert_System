@@ -2,6 +2,7 @@ import healpy as hp
 import astropy.coordinates
 import astropy.time
 import astropy.units as u
+import astropy_healpix as ah
 import numpy as np
 from astropy.coordinates import Angle
 import matplotlib
@@ -12,6 +13,26 @@ maxhetdec = 74
 minhetdec = -12
 minhetdec_rad = (90-maxhetdec)*np.pi/180
 maxhetdec_rad = (90-minhetdec)*np.pi/180
+
+
+def get_uniq_from_ang(ra, dec, lvls):
+    """
+    Get uniq IDs for set of theta and phi values.
+    """
+    nside = ah.level_to_nside(lvls)
+    match_ipix = ah.lonlat_to_healpix(ra, dec, nside, order='nested')
+    i = np.array([np.flatnonzero(ipix == mi)[0] for mi in match_ipix])
+    return ah.level_ipix_to_uniq(lvls, i)
+
+def convert_uniq_to_ra_dec(uniq):
+    """
+    Convert uniq IDs to ra dec values in degrees.
+    """
+    lvl, ipix = ah.uniq_to_level_ipix(uniq)
+    nside = ah.level_to_nside(lvl)
+    ra, dec = ah.healpix_to_lonlat(ipix, nside)
+    return ra, dec
+
 def prob_observable(m, header, time, savedir, plot = True):
     """
     Determine the integrated probability contained in a gravitational-wave
@@ -20,9 +41,12 @@ def prob_observable(m, header, time, savedir, plot = True):
     """
 
     # Determine resolution of sky map
+    #mplot = np.copy(m)
+    #npix = len(m)
+    #nside = hp.npix2nside(npix)
+    level, ipix = ah.uniq_to_level_ipix(m['UNIQ'])
     mplot = np.copy(m)
-    npix = len(m)
-    nside = hp.npix2nside(npix)
+    nside = ah.level_to_nside(level)
     # Get time now and Local Sidereal Time
     # time = astropy.time.Time.now()
     # Or at the time of the gravitational-wave event...
@@ -43,9 +67,13 @@ def prob_observable(m, header, time, savedir, plot = True):
     # Find pixels of HET pupil in this time
     t = astropy.time.Time(time,scale='utc',location=HET_loc)
     LST = t.sidereal_time('mean').deg
-    HETphi = ((hetpupil[:,1]+LST)%360)*np.pi/180
-    HETtheta = (90-hetpupil[:,2])*np.pi/180
-    newpix = hp.ang2pix(nside, HETtheta, HETphi)
+    #HETphi = ((hetpupil[:,1]+LST)%360)*np.pi/180
+    #HETtheta = (90-hetpupil[:,2])*np.pi/180
+
+    HETphi = (hetpupil[:,1]+LST)%360 * u.deg
+    HETtheta = (90-hetpupil[:,2]) * u.deg
+    newpix = get_uniq_from_ang(HETtheta, HETphi)
+    #newpix = hp.ang2pix(nside, HETtheta, HETphi)
     newpixp = newpix
 
 
@@ -53,10 +81,12 @@ def prob_observable(m, header, time, savedir, plot = True):
     frame = astropy.coordinates.AltAz(obstime=t, location=observatory)
 
     # Look up (celestial) spherical polar coordinates of HEALPix grid.
-    theta, phi = hp.pix2ang(nside, np.arange(npix))
+    #theta, phi = hp.pix2ang(nside, np.arange(npix))
+    theta, phi = convert_uniq_to_ra_dec(m['UNIQ'])
+
     # Convert to RA, Dec.
     radecs = astropy.coordinates.SkyCoord(
-        ra=phi*u.rad, dec=(0.5*np.pi - theta)*u.rad)
+        ra=phi, dec=(0.5*np.pi - theta))
     # Transform grid to alt/az coordinates at observatory, in this time
     altaz = radecs.transform_to(frame)
 
@@ -85,8 +115,12 @@ def prob_observable(m, header, time, savedir, plot = True):
         timetilldark = (nightstart-t)
         timetilldark.format = 'sec'
         LST = nightstart.sidereal_time('mean').deg
-        HETphi = ((hetpupil[:,1]+LST)%360)*np.pi/180
-        newpix = hp.ang2pix(nside, HETtheta, HETphi)
+        #HETphi = ((hetpupil[:,1]+LST)%360)*np.pi/180
+        #newpix = hp.ang2pix(nside, HETtheta, HETphi)
+
+        HETphi = (hetpupil[:,1]+LST)%360) * u.deg
+        newpix = get_uniq_from_ang(HETtheta, HETphi)
+
     else:
         timetillbright = (nightend-t)
         timetillbright.format = 'sec'
@@ -97,11 +131,20 @@ def prob_observable(m, header, time, savedir, plot = True):
     # degrees below the horizon and that the airmass (secant of zenith angle 
     # approximation) is at most 2.5.
 
-    msortedpix = np.flipud(np.argsort(m))
-    cumsum = np.cumsum(m[msortedpix])
-    cls = np.empty_like(m)
-    cls[msortedpix] = cumsum*100
-    p90i = np.where(cls <= 90)
+    # determine 90% probability region
+    m.sort('PROBDENSITY', reverse=True)
+    level, ipix = ah.uniq_to_level_ipix(m['UNIQ'])
+    pixel_area = ah.nside_to_pixel_area(ah.level_to_nside(level))
+    prob = pixel_area * m['PROBDENSITY']
+    cumprob = np.cumsum(prob)
+    p90i = cumprob.searchsorted(0.9)
+
+    #msortedpix = np.flipud(np.argsort(m))
+    #cumsum = np.cumsum(m[msortedpix])
+    #cls = np.empty_like(m)
+    #cls[msortedpix] = cumsum*100
+    #p90i = np.where(cls <= 90)
+    
     if plot:
 
         #SUN CIRCLE OF 18 DEGREES
