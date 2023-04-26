@@ -114,7 +114,7 @@ def write_catalog(params, savedir=''):
     
     print("Beginning CSV read to pandas")
     #working with list of galaxies visble to HET
-    cat1 = pd.read_csv("Glade_HET_Visible_Galaxies.csv", sep=',',usecols = [1,2,3,4,5],names=['RAJ2000','DEJ2000','B','K','d'],header=0,dtype=np.float64)
+    reader = pd.read_csv("Glade_HET_Visible_Galaxies.csv", chunksize=10000, sep=',',usecols = [1,2,3,4,5],names=['RAJ2000','DEJ2000','B','K','d'],header=0,dtype=np.float64)
     #plt.show()
     print("Getting prob indices of entire catalog")
     cattop, logptop, cls = get_probability_index(cat1, probb, distmu, distsigma, distnorm, pixarea, nside, probability)

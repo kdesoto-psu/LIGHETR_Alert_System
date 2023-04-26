@@ -118,7 +118,7 @@ def prob_observable(m, header, time, savedir, plot = True):
         #HETphi = ((hetpupil[:,1]+LST)%360)*np.pi/180
         #newpix = hp.ang2pix(nside, HETtheta, HETphi)
 
-        HETphi = (hetpupil[:,1]+LST)%360) * u.deg
+        HETphi = (hetpupil[:,1]+LST)%360 * u.deg
         newpix = get_uniq_from_ang(HETtheta, HETphi)
 
     else:
