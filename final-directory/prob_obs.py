@@ -39,8 +39,8 @@ def convert_uniq_to_ra_dec(uniq):
     """
     lvl, ipix = ah.uniq_to_level_ipix(uniq)
     nside = ah.level_to_nside(lvl)
-    ra, dec = ah.healpix_to_lonlat(ipix, nside)
-    return ra.value, dec.value
+    ra, dec = ah.healpix_to_lonlat(ipix, nside, order='nested')
+    return ra.degree, dec.degree
     
 def query_strip_uniq(min_dec, max_dec, lvls, ipix):
     """
@@ -48,7 +48,7 @@ def query_strip_uniq(min_dec, max_dec, lvls, ipix):
     """
     nside = ah.level_to_nside(lvls)
     
-    ra, dec = ah.healpix_to_lonlat(ipix, nside)
+    ra, dec = ah.healpix_to_lonlat(ipix, nside, order='nested')
     uniq = ah.level_ipix_to_uniq(lvls, ipix)
     
     uniq_strip = uniq[(dec.value > min_dec) & (dec.value < max_dec)]
@@ -59,12 +59,12 @@ def query_disc_uniq(ra, dec, radius, lvls, ipix):
     """
     Convert uniq IDs to ra dec values in degrees.
     """
-    nside = ah.level_to_nside(lvls)
+        nside = ah.level_to_nside(lvls)
     
-    ra_all, dec_all = ah.healpix_to_lonlat(ipix, nside)
+    ra_all, dec_all = ah.healpix_to_lonlat(ipix, nside, order='nested')
     uniq = ah.level_ipix_to_uniq(lvls, ipix)
     
-    uniq_strip = uniq[(ra_all.value - ra)**2 + (dec_all.value - dec)**2 <= radius**2]
+    uniq_strip = uniq[(ra_all.degree - ra)**2 + (dec_all.degree - dec)**2 <= radius**2]
     
     if len(uniq_strip) == 0: # pixels too large around disc
         return np.array([get_uniq_from_ang(ra, dec, lvls, ipix),])
@@ -143,13 +143,9 @@ def prob_observable(m, header, time, savedir, plot = True):
     t = astropy.time.Time(time,scale='utc',location=HET_loc)
     LST = t.sidereal_time('mean').deg
     
-    # Geodetic coordinates of MacDonald Obs
-    
-    #hetfullpix = hp.query_strip(np.max(nside), minhetdec_rad, \
-    #                        maxhetdec_rad) # maybe move somewhere else
-                            
+    # Get full pixel coverage of HET over 24 hours
     hetfullpix_uniq = query_strip_uniq(minhetdec_deg, maxhetdec_deg, level, ipix)
-    hetfullpix = np.array([np.where(u == UNIQ)[0] for u in hetfullpix_uniq]) # TODO: how to vectorize this?
+    hetfullpix = np.array([np.where(u == UNIQ)[0][0] for u in hetfullpix_uniq]) # TODO: how to vectorize this?
 
 
     # get CURRENT HET pupil location pixels
@@ -157,9 +153,10 @@ def prob_observable(m, header, time, savedir, plot = True):
     HETtheta = hetpupil[:,2]
     newuniq = np.array([get_uniq_from_ang(HETphi[i], HETtheta[i], level, ipix) for i in range(len(HETtheta))])
     
-    newuniq = np.unique(newuniq[newuniq >= 0])
     print(newuniq)
-    newpix = np.array([np.where(u == UNIQ)[0] for u in newuniq]) # TODO: how to vectorize this?
+    
+    newuniq = np.unique(newuniq[newuniq >= 0])
+    newpix = np.array([np.where(u == UNIQ)[0][0] for u in newuniq]) # TODO: how to vectorize this?
 
 
     # Alt/az reference frame at the observatory, in this time
@@ -168,6 +165,8 @@ def prob_observable(m, header, time, savedir, plot = True):
     # Look up (celestial) spherical polar coordinates of HEALPix grid.
     #theta, phi = hp.pix2ang(nside, np.arange(npix))
     ra, dec = convert_uniq_to_ra_dec(UNIQ)
+    
+    print(np.min(ra), np.max(ra), np.min(dec), np.max(dec))
 
     # Convert to RA, Dec.
     radecs = astropy.coordinates.SkyCoord(
@@ -206,18 +205,13 @@ def prob_observable(m, header, time, savedir, plot = True):
         #SUN CIRCLE OF 18 DEGREES
         radius = 18
         uniq_sun = query_disc_uniq(sun.ra.degree, sun.dec.degree, radius, level, ipix)
-        print(uniq_sun) # TODO: fix, currently -1
-        try:
-            ipix_sun = np.array([np.where(u == UNIQ)[0][0] for u in uniq_sun])
-            print("A", ipix_sun)
-        except:
-            ipix_sun = np.array([np.where(u == UNIQ)[0]for u in uniq_sun])
-            print("B", ipix_sun)
+        ipix_sun = np.array([np.where(u == UNIQ)[0][0] for u in uniq_sun])
 
         #Coloring the plot, order important here!
         mplot[:] = 1
         mplot[altaz.secz > 2.5] = 0.1
         mplot[altaz.alt < 0] = 0.99
+
         mplot[newpix] = 0.2
         mplot[p90i] = 0.4
         mplot[ipix_sun] = 0.6
