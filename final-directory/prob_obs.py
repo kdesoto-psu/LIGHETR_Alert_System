@@ -14,8 +14,6 @@ import sys
 
 maxhetdec_deg = 74
 minhetdec_deg = -12
-#minhetdec_deg = (90-maxhetdec) #*np.pi/180 # switch to degrees
-#maxhetdec_deg = (90-minhetdec) #*np.pi/180 # degrees
 HET_loc = (-104.01472,30.6814,2025)
 
 
@@ -127,6 +125,7 @@ def prob_observable(m, header, time, savedir, plot = True):
     m.sort('PROBDENSITY', reverse=True) # MUST STAY AT TOP OF FUNCTION
     level, ipix = ah.uniq_to_level_ipix(m['UNIQ'])
     nside = ah.level_to_nside(level)
+    pixel_area = ah.nside_to_pixel_area(ah.level_to_nside(level))
     UNIQ = m['UNIQ']
     mplot = np.zeros(len(UNIQ))
    
@@ -271,9 +270,12 @@ def prob_observable(m, header, time, savedir, plot = True):
         
     timetill90 = np.min(good_observing_times)/3600
     
-    prob = m[mask_arraynow].sum()
-    probfull = m[mask_arrayfull].sum()
-    m[np.setdiff1d(np.arange(len(m)),mask_arrayfull,assume_unique=True)]=m.min()
+    indiv_probs = pixel_area * m['PROBDENSITY']
+    prob = np.sum(indiv_probs[mask_arraynow])
+    probfull = np.sum(indiv_probs[mask_arrayfull])
+    
+    # NOTE: this is a modification of the skymap. Only do at end
+    m['PROBDENSITY'][np.setdiff1d(np.arange(len(m)),mask_arrayfull,assume_unique=True)] = np.min(m['PROBDENSITY'])
 
     # Done!
     return prob, probfull, timetill90, m
