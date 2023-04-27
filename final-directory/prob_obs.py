@@ -80,23 +80,8 @@ def get_night_times(t, observatory):
     is_nighttime = sunaltazs24.alt<-18*u.deg
     night_times = times24[is_nighttime] - t
     night_times.format = 'sec'
-    return night_times
-    """
-    nightstart = times24[is_nighttime][0]
-    
-    nightend = times24[~is_nighttime & (times24 > nightstart)][0]
+    return night_times.value
 
-    nightime = nightend - nightstart
-    nightime.format = 'sec'
-    
-    #Moving to start of the night if in daytime
-    timetilldark = nightstart - t # already is 0 if currently nighttime
-    timetilldark.format = 'sec'
-    timetillbright = times24[~is_nighttime][0] - t
-    timetillbright.format = 'sec'
-    
-    return timetilldark, timetillbright, nightstart
-    """
     
 def get_90_prob_region(m):
     """
@@ -154,8 +139,6 @@ def prob_observable(m, header, time, savedir, plot = True):
 
     newuniq = np.unique(newuniq)
     newpix = np.array([np.where(u == UNIQ)[0][0] for u in newuniq]) # TODO: how to vectorize this?
-    print(len(HETphi), len(newuniq), len(newpix))
-
 
     # Alt/az reference frame at the observatory, in this time
     frame = astropy.coordinates.AltAz(obstime=t, location=observatory)
@@ -170,6 +153,7 @@ def prob_observable(m, header, time, savedir, plot = True):
 
     #Get RA,DEC of the sun in this time
     sun = astropy.coordinates.get_sun(time)
+    sun_altaz = sun.transform_to(frame)
     night_times = get_night_times(t, observatory)
     
     """
@@ -221,22 +205,22 @@ def prob_observable(m, header, time, savedir, plot = True):
 
     # intersection of the 90% confidence region and what
     # HET can see NOW and over the next 24 hours
+    
     mask_arraynow = np.intersect1d(p90i, newpix)
     mask_arrayfull = np.intersect1d(p90i, hetfullpix)
     
     # get exact RA/DEC intersection of 90% and HET
-    theta90, phi90 = convert_uniq_to_ra_dec(m['UNIQ'][p90i]) # IN DEGREES
-    theta90HETi = (theta90 > minhetdec_deg) * (theta90 < maxhetdec_deg)
-    print(theta90HETi.sum(),theta90.min(),theta90.max())
+    ra90, dec90 = convert_uniq_to_ra_dec(UNIQ[p90i]) # IN DEGREES
+    dec90HETi = (dec90 > minhetdec_deg) * (dec90 < maxhetdec_deg)
     
-    theta90HET = theta90[theta90HETi]
-    phi90HET = phi90[theta90HETi]
+    dec90HET = dec90[dec90HETi]
+    ra90HET = ra90[dec90HETi]
     
     
     # get exact contour of HET region edge
     hetedgef = lambda x: np.interp(x,hetedge[:,0],hetedge[:,1]) # input theta, get corresponding phi of edge
-    x = (phi90HET - LST)%360 #hetedgef uses HA, so we re-adjust
-    intersect_time = (x - hetedgef(theta90HET))*3600*12/180 # distance until reaching edge, converted to time in seconds
+    x = (ra90HET - LST)%360 #hetedgef uses HA, so we re-adjust
+    intersect_time = (x - hetedgef(dec90HET))*3600*12/180 # distance until reaching edge, converted to time in seconds
     s_start, s_end = np.min(intersect_time), np.max(intersect_time)
     
     #if the region doesn't intersect HET now
@@ -271,8 +255,8 @@ def prob_observable(m, header, time, savedir, plot = True):
     timetill90 = np.min(good_observing_times)/3600
     
     indiv_probs = pixel_area * m['PROBDENSITY']
-    prob = np.sum(indiv_probs[mask_arraynow])
-    probfull = np.sum(indiv_probs[mask_arrayfull])
+    prob = np.sum(indiv_probs[mask_arraynow]).value
+    probfull = np.sum(indiv_probs[mask_arrayfull]).value
     
     # NOTE: this is a modification of the skymap. Only do at end
     m['PROBDENSITY'][np.setdiff1d(np.arange(len(m)),mask_arrayfull,assume_unique=True)] = np.min(m['PROBDENSITY'])
@@ -286,7 +270,7 @@ def main():
         header = {'GraceID': 'TEST'}
         time = astropy.time.Time.now()
         prob, probfull, timetill90, m = prob_observable(skymap, header, time, plot=True)
-        print(timetill90)
         return timetill90
+        
 if __name__=="__main__":
     main()
