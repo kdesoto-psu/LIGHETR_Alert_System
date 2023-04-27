@@ -11,8 +11,8 @@ import matplotlib.pyplot as plt
 import sys
 maxhetdec = 74
 minhetdec = -12
-minhetdec_rad = (90-maxhetdec)*np.pi/180
-maxhetdec_rad = (90-minhetdec)*np.pi/180
+minhetdec_rad = (90-maxhetdec) #*np.pi/180 # switch to degrees
+maxhetdec_rad = (90-minhetdec) #*np.pi/180 # degrees
 
 
 def get_uniq_from_ang(ra, dec, lvls):
@@ -33,6 +33,35 @@ def convert_uniq_to_ra_dec(uniq):
     ra, dec = ah.healpix_to_lonlat(ipix, nside)
     return ra, dec
 
+def get_times_until_dark_bright(t, observatory):
+    """
+    Determine if it's currently day or night, and find
+    time until that changes.
+    """
+    delta_time = np.linspace(0, 24, 1000)*u.hour
+    times24 = t + delta_time
+    frames24 = astropy.coordinates.AltAz(obstime = times24, location=observatory)
+    sunaltazs24 = astropy.coordinates.get_sun(times24).transform_to(frames24)
+    
+    is_nighttime = sunaltazs24.alt<-18*u.deg
+
+    nightstart = times24[is_nighttime][0]
+    
+    nightend = times24[~is_nighttime & (times24 > nightstart)][0]
+
+    nightime = nightend - nightstart
+    nightime.format = 'sec'
+    
+    #Moving to start of the night if in daytime
+    timetilldark = nightstart - t # already is 0 if currently nighttime
+    timetilldark.format = 'sec'
+    timetillbright = times24[~is_nighttime][0] - t
+    timetillbright.format = 'sec'
+
+        
+    return timetilldark, timetillbright, nightstart
+    
+    
 def prob_observable(m, header, time, savedir, plot = True):
     """
     Determine the integrated probability contained in a gravitational-wave
@@ -66,6 +95,7 @@ def prob_observable(m, header, time, savedir, plot = True):
 
     # Find pixels of HET pupil in this time
     t = astropy.time.Time(time,scale='utc',location=HET_loc)
+    
     LST = t.sidereal_time('mean').deg
     #HETphi = ((hetpupil[:,1]+LST)%360)*np.pi/180
     #HETtheta = (90-hetpupil[:,2])*np.pi/180
@@ -86,7 +116,7 @@ def prob_observable(m, header, time, savedir, plot = True):
 
     # Convert to RA, Dec.
     radecs = astropy.coordinates.SkyCoord(
-        ra=phi, dec=(0.5*np.pi - theta))
+        ra=phi, dec=(90 * u.deg - theta))
     # Transform grid to alt/az coordinates at observatory, in this time
     altaz = radecs.transform_to(frame)
 
@@ -95,36 +125,12 @@ def prob_observable(m, header, time, savedir, plot = True):
     # Where is the sun in the Texas sky, in this time?
     sun_altaz = sun.transform_to(frame)
 
-    delta_time = np.linspace(0, 24, 1000)*u.hour
-    times24 = t + delta_time
-    frames24 = astropy.coordinates.AltAz(obstime = times24, location=observatory)
-    sunaltazs24 = astropy.coordinates.get_sun(times24).transform_to(frames24)
-    timetilldark = 0*u.hour
-    timetillbright = 0*u.hour
-
-    nightstart = times24[sunaltazs24.alt<-18*u.deg][0]
-    nighttimemask = np.array((sunaltazs24.alt<-18*u.deg))*1
-    if (sun_altaz.alt > -18*u.deg):
-        nightend = times24[(np.roll(nighttimemask, 1) - nighttimemask) != 0][1]
-    else:
-        nightend = times24[(np.roll(nighttimemask, 1) - nighttimemask) != 0][0]
-    nightime = nightend - nightstart
-    nightime.format = 'sec'
-    #Moving to start of the night if in daytime
-    if (sun_altaz.alt > -18*u.deg):
-        timetilldark = (nightstart-t)
-        timetilldark.format = 'sec'
-        LST = nightstart.sidereal_time('mean').deg
-        #HETphi = ((hetpupil[:,1]+LST)%360)*np.pi/180
-        #newpix = hp.ang2pix(nside, HETtheta, HETphi)
-
-        HETphi = (hetpupil[:,1]+LST)%360 * u.deg
-        newpix = get_uniq_from_ang(HETtheta, HETphi)
-
-    else:
-        timetillbright = (nightend-t)
-        timetillbright.format = 'sec'
-
+    timetilldark, timetillbright, nightstart = get_times_until_dark_bright(t, observatory)
+    
+    LST = nightstart.sidereal_time('mean').deg
+    HETphi = (hetpupil[:,1]+LST)%360 * u.deg
+    newpix = get_uniq_from_ang(HETtheta, HETphi)
+    
     # How likely is it that the (true, unknown) location of the source
     # is within the area that is visible, in this time and within 24 hours? 
     # Demand that it falls in the HETDEX pupil, that the sun is at least 18 
