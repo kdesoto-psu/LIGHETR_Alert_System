@@ -25,13 +25,12 @@ def get_uniq_from_ang(ra, dec, lvls, ipix):
     """
     ra = ra * u.deg
     dec = dec * u.deg
+
     nside = ah.level_to_nside(lvls)
     match_ipix = ah.lonlat_to_healpix(ra, dec, nside, order='nested')
     i = np.flatnonzero(ipix == match_ipix)[0]
-    try:
-        return ah.level_ipix_to_uniq(lvls[i == ipix][0], i)
-    except:
-        return -1
+    
+    return ah.level_ipix_to_uniq(lvls[i], ipix[i])
 
 def convert_uniq_to_ra_dec(uniq):
     """
@@ -51,15 +50,15 @@ def query_strip_uniq(min_dec, max_dec, lvls, ipix):
     ra, dec = ah.healpix_to_lonlat(ipix, nside, order='nested')
     uniq = ah.level_ipix_to_uniq(lvls, ipix)
     
-    uniq_strip = uniq[(dec.value > min_dec) & (dec.value < max_dec)]
+    uniq_strip = uniq[(dec.degree > min_dec) & (dec.degree < max_dec)]
             
-    return np.unique(uniq_strip[uniq_strip > 0])
+    return np.unique(uniq_strip)
     
 def query_disc_uniq(ra, dec, radius, lvls, ipix):
     """
     Convert uniq IDs to ra dec values in degrees.
     """
-        nside = ah.level_to_nside(lvls)
+    nside = ah.level_to_nside(lvls)
     
     ra_all, dec_all = ah.healpix_to_lonlat(ipix, nside, order='nested')
     uniq = ah.level_ipix_to_uniq(lvls, ipix)
@@ -69,7 +68,7 @@ def query_disc_uniq(ra, dec, radius, lvls, ipix):
     if len(uniq_strip) == 0: # pixels too large around disc
         return np.array([get_uniq_from_ang(ra, dec, lvls, ipix),])
         
-    return np.unique(uniq_strip[uniq_strip > 0])
+    return np.unique(uniq_strip)
 
 def get_night_times(t, observatory):
     """
@@ -151,24 +150,19 @@ def prob_observable(m, header, time, savedir, plot = True):
     # get CURRENT HET pupil location pixels
     HETphi = (hetpupil[:,1]+LST)%360
     HETtheta = hetpupil[:,2]
+    
     newuniq = np.array([get_uniq_from_ang(HETphi[i], HETtheta[i], level, ipix) for i in range(len(HETtheta))])
-    
-    print(newuniq)
-    
-    newuniq = np.unique(newuniq[newuniq >= 0])
+
+    newuniq = np.unique(newuniq)
     newpix = np.array([np.where(u == UNIQ)[0][0] for u in newuniq]) # TODO: how to vectorize this?
+    print(len(HETphi), len(newuniq), len(newpix))
 
 
     # Alt/az reference frame at the observatory, in this time
     frame = astropy.coordinates.AltAz(obstime=t, location=observatory)
 
     # Look up (celestial) spherical polar coordinates of HEALPix grid.
-    #theta, phi = hp.pix2ang(nside, np.arange(npix))
     ra, dec = convert_uniq_to_ra_dec(UNIQ)
-    
-    print(np.min(ra), np.max(ra), np.min(dec), np.max(dec))
-
-    # Convert to RA, Dec.
     radecs = astropy.coordinates.SkyCoord(
         ra=ra * u.deg, dec=dec * u.deg)
         
@@ -177,9 +171,6 @@ def prob_observable(m, header, time, savedir, plot = True):
 
     #Get RA,DEC of the sun in this time
     sun = astropy.coordinates.get_sun(time)
-    # Where is the sun in the Texas sky, in this time?
-    sun_altaz = sun.transform_to(frame)
-
     night_times = get_night_times(t, observatory)
     
     """
