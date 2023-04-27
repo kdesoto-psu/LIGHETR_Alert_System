@@ -136,12 +136,6 @@ def process_fits(fits_file, alert_message = None):
         time = Time('2023-04-17T07:00:00.00')
         dist = str(header['DISTMEAN']) + ' +/- ' + str(header['DISTSTD'])
         header['id'] = superevent_id
-
-        # Making a pie chart of the type of event for the email
-        
-        
-        
-        
         
         '''
         print("Alert message event keys: "+str(alert_message['event'].keys()))
@@ -237,7 +231,7 @@ def process_fits(fits_file, alert_message = None):
             
 ###########Things start here####################
 contact_list_file_loc = 'contact_only_HET_BNS.json'
-people_to_contact = ['Karthik', 'Ashley', 'Kaylee']
+people_to_contact = ['Kaylee',]
 
 
 #stream_start_pos = 1600
