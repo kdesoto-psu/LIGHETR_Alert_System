@@ -145,8 +145,7 @@ def prob_observable(m, header, time, savedir, plot = True):
 
     # Look up (celestial) spherical polar coordinates of HEALPix grid.
     ra, dec = convert_uniq_to_ra_dec(UNIQ)
-    radecs = astropy.coordinates.SkyCoord(
-        ra=ra * u.deg, dec=dec * u.deg)
+    radecs = astropy.coordinates.SkyCoord(ra=ra * u.deg, dec=dec * u.deg)
         
     # Transform grid to alt/az coordinates at observatory, in this time
     altaz = radecs.transform_to(frame)
@@ -228,7 +227,7 @@ def prob_observable(m, header, time, savedir, plot = True):
     
         #if the region doesn't intersect HET at all
         if len(np.intersect1d(p90i,hetfullpix)) == 0:
-            return 0 , 0 , -99, 0
+            return 0 , 0 , -99, 0, np.array([]), np.array([]), hetedgef(dec90HET)
  
         assert s_end > s_start
         assert s_start > 0.
@@ -250,7 +249,7 @@ def prob_observable(m, header, time, savedir, plot = True):
         good_observing_times = night_times[night_times < s_end]
         
     if len(good_observing_times) == 0:
-        return 0 , 0 , -99, 0
+        return 0 , 0 , -99, 0, np.array([]), np.array([]), hetedgef(dec90HET)
         
     timetill90 = np.min(good_observing_times)/3600
     
@@ -262,7 +261,7 @@ def prob_observable(m, header, time, savedir, plot = True):
     m['PROBDENSITY'][np.setdiff1d(np.arange(len(m)),mask_arrayfull,assume_unique=True)] = np.min(m['PROBDENSITY'])
 
     # Done!
-    return prob, probfull, timetill90, m
+    return prob, probfull, timetill90, m, mask_arraynow, mask_arrayfull, hetedgef(dec90HET) # import the intersections too
 
 def main():
         skymap, header = hp.read_map(sys.argv[1],

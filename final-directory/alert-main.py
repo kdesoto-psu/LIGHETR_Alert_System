@@ -161,10 +161,13 @@ def process_fits(fits_file, alert_message = None):
 
     
 
-    prob, probfull, timetill90, m = prob_observable(skymap, header, time, savedir = obs_time_dir, plot=True)
+    prob, probfull, timetill90, m, mask_now, mask_full, het_ra_edges = prob_observable(skymap, header, time, savedir = obs_time_dir, plot=True)
 
     alert_message['skymap_fits'] = multiorder_file_name
     alert_message['skymap_array'] = m
+    alert_message['mask_now'] = mask_now
+    alert_message['mask_full'] = mask_full
+    alert_message['het_ra_edges'] = het_ra_edges
     
     
     #if False:
@@ -185,8 +188,11 @@ def process_fits(fits_file, alert_message = None):
         cattop, logptop, num_galaxies_visible_HET = get_galaxies.write_catalog(alert_message, savedir = obs_time_dir)
         print("finished writing cat")
         
-        mincontour = get_LST.get_LST(savedir = obs_time_dir,targf = obs_time_dir+'HET_Visible_Galaxies_prob_list.dat')
-        
+        mincontour = get_LST.get_LST(savedir = obs_time_dir,targf = obs_time_dir+'HET_Visible_Galaxies_prob_list_full.dat')
+        make_phaseii.make_phaseii(lstfile = obs_time_dir+'LSTs_Visible.out', savedir = obs_time_dir)
+
+        return
+
         print("people to contact: "+str(people_to_contact))
         
         email_body = 'A Neutron Star Merger has been detected by LIGO.\n{:.1f} hours till you can observe the 90 % prob region.'.format(timetill90)+"\nSource has a {:.1f}% chance of being observable now.\n\nPlease join this zoom call: https://us06web.zoom.us/j/87536495694".format(int(round(100 * prob)))
@@ -200,7 +206,6 @@ def process_fits(fits_file, alert_message = None):
         calling_dict = get_caller_list(contact_list_file_loc)
         texting_dict = get_texter_list(contact_list_file_loc)
         
-        make_phaseii.make_phaseii(lstfile = obs_time_dir+'LSTs_Visible.out', savedir = obs_time_dir)
         
         call_people(calling_dict = calling_dict, people_to_contact = people_to_contact, message_to_say = 'NS Event Detected. Check email for information.')
         send_text_messages(reciever_dict = texting_dict, people_to_contact = people_to_contact, message_to_send = 'NS Event Detected. Check email for information.\n\nPlease join this zoom Call:\nhttps://us06web.zoom.us/j/87536495694')
