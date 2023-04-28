@@ -98,14 +98,17 @@ def get_probability_index(
     gal_i = np.array([get_idx_from_ang(ra[i], dec[i], lvls, ipix) for i in range(len(ra))])
 
     dist = cat['d']
-    logdp_dV = np.log(probability[gal_i]) + np.log(conditional_pdf(dist,distmu[gal_i],distsigma[gal_i],distnorm[gal_i]).tolist()) - np.log(pixarea)
+    log_term1 = np.log(conditional_pdf(dist, distmu[gal_i],distsigma[gal_i],distnorm[gal_i]).tolist())
+    log_term2 = np.log(probability[gal_i])
+    logdp_dV = log_term1 + log_term2
 
     #cutting to select only 90 % confidence in position
-    cattop = cat[gal_i < p90i]
+    ra = ra[gal_i < p90i]
+    dec = dec[gal_i < p90i]
     logdp_dV = logdp_dV[gal_i < p90i]
     gal_cls = cumprob[gal_i]
     cls = gal_cls[gal_i < p90i]
-    s_lumK = 10**(-0.4*cattop['B'])
+    s_lumK = 10**(-0.4*cat['B'])[gal_i < p90i]
     s_lumK = s_lumK/s_lumK.sum()
     #s_lumB = 10**(-0.4*cat1['B_Abs'][cls>90])
     #s_lumB = s_lumB/s_lumB.sum()
@@ -113,12 +116,12 @@ def get_probability_index(
     #only using K for now
     logdp_dV = np.log(s_lumK) + logdp_dV
     
-    return cattop, logdp_dV, cls
+    return ra, dec, logdp_dV, cls
 
 def write_catalog(params, savedir=''):
     fits_f = params['skymap_fits']
     event = params['superevent_id']
-    probability = params['skymap_array']
+    probability = params['skymap_array']['PROBDENSITY'].value
     
     """
     # Reading in the skymap prob and header
@@ -129,9 +132,9 @@ def write_catalog(params, savedir=''):
     m = QTable.read(fits_f)
     
     m.sort('PROBDENSITY', reverse=True) # MUST STAY AT TOP OF FUNCTION
-    distmu = m['DISTMU']
-    distsigma = m['DISTSIGMA']
-    distnorm = m['DISTNORM']
+    distmu = m['DISTMU'].value
+    distsigma = m['DISTSIGMA'].value
+    distnorm = m['DISTNORM'].value
     
     header = fits.open(fits_f)[1].header
     
@@ -146,36 +149,44 @@ def write_catalog(params, savedir=''):
     #working with list of galaxies visble to HET
     reader = pd.read_csv("Glade_HET_Visible_Galaxies.csv", chunksize=100000, sep=',',usecols = [1,2,3,4,5],names=['RAJ2000','DEJ2000','B','K','d'],header=0,dtype=np.float64)
     #plt.show()
-    cattop = np.array([])
+    ra_cat = np.array([])
+    dec_cat = np.array([])
     logdp_dV = np.array([])
     cls = np.array([])
     
     for chunk in reader:
-        ct, logptop, con = get_probability_index(chunk, p90i, cumprob, distmu, distsigma, distnorm, pixarea, level, ipix, probability)
-        cattop = np.append(cattop, ct)
+        r_ct, d_ct, logptop, con = get_probability_index(chunk, p90i, cumprob, distmu, distsigma, distnorm, pixarea, level, ipix, probability)
+        ra_cat = np.append(ra_cat, r_ct)
+        dec_cat = np.append(dec_cat, d_ct)
         logdp_dV = np.append(logdp_dV, logptop)
         cls = np.append(cls, con)
         
     #Now working only with event with overall probability 99% lower than the most probable
-    top99i = logdp_dV-np.max(logdp_dV) > np.log(1/100)
+    top99i = (logdp_dV-np.max(logdp_dV)) > np.log(1/100)
 
-    cattop = cattop[top99i]
+    ra_cat = ra_cat[top99i]
+    dec_cat = dec_cat[top99i]
     logdp_dV = logdp_dV[top99i]
     cls = cls[top99i]
 
     #sorting by probability
     isort = np.argsort(logdp_dV)[::-1]
     
-    cattop = Table.from_pandas(cattop.iloc[isort])
-    logptop = logdp_dV.iloc[isort]
+    ra_cat = ra_cat[isort]
+    dec_cat = dec_cat[isort]
+    logptop = logdp_dV[isort]
     cls = cls[isort]
     
-    index = Column(name='index',data=np.arange(len(cattop)))
+    index = Column(name='index',data=np.arange(len(ra_cat)))
+    ra_col = Column(name='RAJ2000',data=ra_cat)
+    dec_col = Column(name='DEJ2000',data=dec_cat)
     logprob = Column(name='LogProb',data=logptop)
-    exptime = Column(name='exptime',data=60*20*np.ones(len(cattop)))
+    exptime = Column(name='exptime',data=60*20*np.ones(len(ra_cat)))
     contour = Column(name='contour',data = cls)
-    Nvis = Column(name='Nvis',data=np.ones(len(cattop)))
-    cattop.add_columns([index,logprob,exptime,Nvis,contour])
+    Nvis = Column(name='Nvis',data=np.ones(len(ra_cat)))
+    
+    cattop = Table()
+    cattop.add_columns([index,ra_col,dec_col, logprob,exptime,Nvis,contour])
     ascii.write(cattop['index','RAJ2000','DEJ2000','exptime','Nvis','LogProb','contour'], savedir+'HET_Visible_Galaxies_prob_list.dat', overwrite=True)
     
     #should find the number of galaxies that will be visible to HET, compared to the number of total galaxies within the region
