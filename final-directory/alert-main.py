@@ -180,15 +180,12 @@ def process_fits(fits_file, alert_message = None):
         write_to_file(obs_time_dir+" observability.txt", "Integrated probability over 24 hours (ignoring the sun) is {:.1f}%".format(int(round(100 * probfull))), append = True)
         write_to_file(obs_time_dir+" observability.txt", '{:.1f} hours till you can observe the 90 % prob region.'.format(timetill90), append = True)
         
-        return None
         
         print("get_galaxies writing catalog")
         cattop, logptop, num_galaxies_visible_HET = get_galaxies.write_catalog(alert_message, savedir = obs_time_dir)
         print("finished writing cat")
         
         mincontour = get_LST.get_LST(savedir = obs_time_dir,targf = obs_time_dir+'HET_Visible_Galaxies_prob_list.dat')
-        
-        
         
         print("people to contact: "+str(people_to_contact))
         

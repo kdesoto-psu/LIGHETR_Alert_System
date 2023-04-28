@@ -20,6 +20,9 @@ import pandas as pd
 from ligo.skymap.distance import conditional_pdf
 import pdb
 import matplotlib.pyplot as plt
+import astropy_healpix as ah
+from astropy.table import QTable
+from astropy.io import fits
 
 def parseargs():
 
@@ -48,37 +51,111 @@ def cdf(pdf):
     cls[sortedpix] = cumsum*100
     return cls
 
-def get_probability_index(cat, probb, distmu, distsigma, distnorm, pixarea, nside, probability):
+def get_90_prob_region(m):
+    """
+    Uses multi-order sky map to get 90% confidence region indices.
+    """
+    level, ipix = ah.uniq_to_level_ipix(m['UNIQ'])
+    pixel_area = ah.nside_to_pixel_area(ah.level_to_nside(level))
+    prob = pixel_area * m['PROBDENSITY']
+    cumprob = np.cumsum(prob)
+    p90i = cumprob.searchsorted(0.9)
+    return p90i, cumprob
+
+def get_idx_from_ang(ra, dec, lvls, ipix):
+    """
+    Get uniq IDs for set of theta and phi values.
+    """
+    ra = ra * u.deg
+    dec = dec * u.deg
+
+    nside = ah.level_to_nside(lvls)
+    match_ipix = ah.lonlat_to_healpix(ra, dec, nside, order='nested')
+    i = np.flatnonzero(ipix == match_ipix)[0]
+    
+    return i
+    
+def get_probability_index(
+    cat,
+    p90i,
+    cumprob,
+    distmu,
+    distsigma,
+    distnorm,
+    pixarea,
+    lvls,
+    ipix,
+    probability
+):
     
     '''
     This will take a pandas-read in csv file, and will return a ordered list of galaxies within that catalog that are ordered by probability map
     '''
     
-    theta = 0.5*np.pi - cat['DEJ2000']*np.pi/180
-    theta = np.asarray([float(i) for i in theta])
+    dec = np.array(cat['DEJ2000']).astype(float)
+    ra = np.array(cat['RAJ2000']).astype(float)
     
-    phi = cat['RAJ2000']*np.pi/180
-    phi = np.asarray([float(i) for i in phi])
-    cls = cdf(probb)
-
-
-    ipix = hp.ang2pix(nside, theta, phi)
-    cls = cls[ipix]
+    gal_i = np.array([get_idx_from_ang(ra[i], dec[i], lvls, ipix) for i in range(len(ra))])
 
     dist = cat['d']
-    logdp_dV = np.log(probability[ipix]) + np.log(conditional_pdf(dist,distmu[ipix],distsigma[ipix],distnorm[ipix]).tolist()) - np.log(pixarea)
+    logdp_dV = np.log(probability[gal_i]) + np.log(conditional_pdf(dist,distmu[gal_i],distsigma[gal_i],distnorm[gal_i]).tolist()) - np.log(pixarea)
 
     #cutting to select only 90 % confidence in position
-    cattop = cat[cls<90]
-    logdp_dV= logdp_dV[cls<90]
-    s_lumK = 10**(-0.4*cat['B'][cls<90])
+    cattop = cat[gal_i < p90i]
+    logdp_dV = logdp_dV[gal_i < p90i]
+    gal_cls = cumprob[gal_i]
+    cls = gal_cls[gal_i < p90i]
+    s_lumK = 10**(-0.4*cattop['B'])
     s_lumK = s_lumK/s_lumK.sum()
     #s_lumB = 10**(-0.4*cat1['B_Abs'][cls>90])
     #s_lumB = s_lumB/s_lumB.sum()
-    cls = cls[cls<90]
+    
     #only using K for now
     logdp_dV = np.log(s_lumK) + logdp_dV
+    
+    return cattop, logdp_dV, cls
 
+def write_catalog(params, savedir=''):
+    fits_f = params['skymap_fits']
+    event = params['superevent_id']
+    probability = params['skymap_array']
+    
+    """
+    # Reading in the skymap prob and header
+    locinfo, header = hp.read_map(fits, field=range(4), h=True)
+    probb, distmu, distsigma, distnorm = locinfo
+    """
+    
+    m = QTable.read(fits_f)
+    
+    m.sort('PROBDENSITY', reverse=True) # MUST STAY AT TOP OF FUNCTION
+    distmu = m['DISTMU']
+    distsigma = m['DISTSIGMA']
+    distnorm = m['DISTNORM']
+    
+    header = fits.open(fits_f)[1].header
+    
+    level, ipix = ah.uniq_to_level_ipix(m['UNIQ'])
+    nside = ah.level_to_nside(level)
+    pixarea = ah.nside_to_pixel_area(ah.level_to_nside(level))
+    UNIQ = m['UNIQ']
+    
+    p90i, cumprob = get_90_prob_region(m)
+    
+    print("Beginning CSV read to pandas")
+    #working with list of galaxies visble to HET
+    reader = pd.read_csv("Glade_HET_Visible_Galaxies.csv", chunksize=100000, sep=',',usecols = [1,2,3,4,5],names=['RAJ2000','DEJ2000','B','K','d'],header=0,dtype=np.float64)
+    #plt.show()
+    cattop = np.array([])
+    logdp_dV = np.array([])
+    cls = np.array([])
+    
+    for chunk in reader:
+        ct, logptop, con = get_probability_index(chunk, p90i, cumprob, distmu, distsigma, distnorm, pixarea, level, ipix, probability)
+        cattop = np.append(cattop, ct)
+        logdp_dV = np.append(logdp_dV, logptop)
+        cls = np.append(cls, con)
+        
     #Now working only with event with overall probability 99% lower than the most probable
     top99i = logdp_dV-np.max(logdp_dV) > np.log(1/100)
 
@@ -93,33 +170,6 @@ def get_probability_index(cat, probb, distmu, distsigma, distnorm, pixarea, nsid
     logptop = logdp_dV.iloc[isort]
     cls = cls[isort]
     
-    
-    return cattop, logptop, cls
-
-def write_catalog(params, savedir=''):
-    fits = params['skymap_fits']
-    event = params['superevent_id']
-    probability = params['skymap_array']
-    
-    
-    # Reading in the skymap prob and header
-    locinfo, header = hp.read_map(fits, field=range(4), h=True)
-    probb, distmu, distsigma, distnorm = locinfo
-    # Getting healpix resolution and pixel area in deg^2
-    npix = len(probb)
-    nside = hp.npix2nside(npix)
-    # Area per pixel in steradians
-    pixarea = hp.nside2pixarea(nside)
-    # Get the catalog
-    
-    print("Beginning CSV read to pandas")
-    #working with list of galaxies visble to HET
-    reader = pd.read_csv("Glade_HET_Visible_Galaxies.csv", chunksize=10000, sep=',',usecols = [1,2,3,4,5],names=['RAJ2000','DEJ2000','B','K','d'],header=0,dtype=np.float64)
-    #plt.show()
-    print("Getting prob indices of entire catalog")
-    cattop, logptop, cls = get_probability_index(cat1, probb, distmu, distsigma, distnorm, pixarea, nside, probability)
-    
-
     index = Column(name='index',data=np.arange(len(cattop)))
     logprob = Column(name='LogProb',data=logptop)
     exptime = Column(name='exptime',data=60*20*np.ones(len(cattop)))
@@ -127,7 +177,6 @@ def write_catalog(params, savedir=''):
     Nvis = Column(name='Nvis',data=np.ones(len(cattop)))
     cattop.add_columns([index,logprob,exptime,Nvis,contour])
     ascii.write(cattop['index','RAJ2000','DEJ2000','exptime','Nvis','LogProb','contour'], savedir+'HET_Visible_Galaxies_prob_list.dat', overwrite=True)
-    
     
     #should find the number of galaxies that will be visible to HET, compared to the number of total galaxies within the region
     num_galaxies_visible_HET = len(index)
