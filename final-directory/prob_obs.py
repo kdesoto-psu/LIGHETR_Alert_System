@@ -81,7 +81,6 @@ def get_night_times(t, observatory):
     night_times = times24[is_nighttime] - t
     night_times.format = 'sec'
     return night_times.value
-
     
 def get_90_prob_region(m):
     """
@@ -189,7 +188,6 @@ def prob_observable(m, header, time, savedir, plot = True):
         mplot[p90i] = 0.4
         mplot[ipix_sun] = 0.6
         
-        # TODO: use mhealpy for plotting
         #hp.mollview(mplot, coord='C',cmap= 'nipy_spectral', cbar=False, max=1, title='HET NOW')
         #hp.graticule(local=True)
         mhealpy_map = HealpixMap(mplot, UNIQ, density = True, scheme='NUNIQ')
@@ -244,7 +242,6 @@ def prob_observable(m, header, time, savedir, plot = True):
         """
         good_observing_times = night_times[(night_times > s_start) & (night_times < s_end)]
         
-        
     else:
         good_observing_times = night_times[night_times < s_end]
         
@@ -262,6 +259,7 @@ def prob_observable(m, header, time, savedir, plot = True):
 
     # Done!
     return prob, probfull, timetill90, m, mask_arraynow, mask_arrayfull, hetedgef(dec90HET) # import the intersections too
+
 
 def main():
         skymap, header = hp.read_map(sys.argv[1],
